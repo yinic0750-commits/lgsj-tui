@@ -15,6 +15,7 @@ func TestModelRefsFromConfig(t *testing.T) {
 	t.Chdir(t.TempDir()) // no lgcode.toml → built-in default providers
 	// Only DeepSeek keyed → MiMo refs must be filtered out.
 	t.Setenv("DEEPSEEK_API_KEY", "test-key")
+	t.Setenv("LGDG_API_KEY", "")
 	t.Setenv("MIMO_API_KEY", "")
 	refs := modelRefs()
 	if len(refs) == 0 {
@@ -35,6 +36,7 @@ func TestModelRefsFromConfig(t *testing.T) {
 func TestModelRefsSkipsUnconfigured(t *testing.T) {
 	t.Chdir(t.TempDir())
 	t.Setenv("DEEPSEEK_API_KEY", "")
+	t.Setenv("LGDG_API_KEY", "")
 	t.Setenv("MIMO_API_KEY", "")
 	if refs := modelRefs(); len(refs) != 0 {
 		t.Errorf("no keys set → no refs, got %v", refs)
@@ -46,6 +48,8 @@ func TestModelRefsSkipsUnconfigured(t *testing.T) {
 func TestModelArgCompletion(t *testing.T) {
 	t.Chdir(t.TempDir())
 	t.Setenv("DEEPSEEK_API_KEY", "test-key")
+	t.Setenv("LGDG_API_KEY", "")
+	t.Setenv("MIMO_API_KEY", "")
 	m := newTestChatTUI()
 	items, _, ok := m.slashArgItems("/model ")
 	if !ok || len(items) == 0 {
@@ -61,6 +65,7 @@ func TestModelArgCompletion(t *testing.T) {
 func TestPersistModelWritesDefaultModel(t *testing.T) {
 	isolateUserConfig(t)
 	t.Setenv("DEEPSEEK_API_KEY", "test-key")
+	t.Setenv("LGDG_API_KEY", "")
 	t.Setenv("MIMO_API_KEY", "")
 
 	m := newTestChatTUI()
@@ -84,6 +89,7 @@ func TestPersistModelWritesDefaultModel(t *testing.T) {
 func TestPersistModelRejectsUnknownRef(t *testing.T) {
 	isolateUserConfig(t)
 	t.Setenv("DEEPSEEK_API_KEY", "test-key")
+	t.Setenv("LGDG_API_KEY", "")
 
 	m := newTestChatTUI()
 	m.persistModel("ghost/never-existed")

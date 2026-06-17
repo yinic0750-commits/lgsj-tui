@@ -60,6 +60,15 @@ context_window = 1000000
 # DeepSeek thinking is always on; effort: high | max. Omit for auto (provider default).
 effort      = "high"
 
+[[providers]]
+name           = "lgdg-modelhub"
+kind           = "openai"
+base_url       = "https://modelhub.lgdg.cc/aigateway/v1"
+model          = "DeepSeek-V4-Flash-w8a8-mtp"
+api_key_env    = "LGDG_API_KEY"
+context_window = 1000000
+reasoning_protocol = "none"
+
 # A single-model provider still works (use `model = "..."`) — pick this form when a
 # model needs its own base_url / context_window / price (e.g. the two MiMo SKUs
 # below have different context windows).

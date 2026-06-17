@@ -46,6 +46,8 @@ func TestACPBuiltinToolsKeepSessionLevelBuiltins(t *testing.T) {
 func TestACPInitializesWithoutAPIKey(t *testing.T) {
 	isolateCLIConfigHome(t)
 	t.Setenv("DEEPSEEK_API_KEY", "")
+	t.Setenv("LGDG_API_KEY", "")
+	t.Setenv("MIMO_API_KEY", "")
 	oldStdin := os.Stdin
 	r, w, err := os.Pipe()
 	if err != nil {

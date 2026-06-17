@@ -342,6 +342,7 @@ func TestWelcomePromptMissingKeysRequiresConfigSource(t *testing.T) {
 func TestProvidersWithMissingKeysOnlyChecksActiveDefaultModel(t *testing.T) {
 	cfg := config.Default()
 	t.Setenv("DEEPSEEK_API_KEY", "")
+	t.Setenv("LGDG_API_KEY", "")
 	t.Setenv("MIMO_API_KEY", "")
 
 	missing := providersWithMissingKeys(cfg)
@@ -356,6 +357,7 @@ func TestProvidersWithMissingKeysOnlyChecksActiveDefaultModel(t *testing.T) {
 func TestProvidersWithMissingKeysIgnoresUnusedBuiltInPresets(t *testing.T) {
 	cfg := config.Default()
 	t.Setenv("DEEPSEEK_API_KEY", "test-key")
+	t.Setenv("LGDG_API_KEY", "")
 	t.Setenv("MIMO_API_KEY", "")
 
 	if missing := providersWithMissingKeys(cfg); len(missing) != 0 {
@@ -372,6 +374,7 @@ func TestProvidersWithMissingKeysIncludesReferencedSecondaryModels(t *testing.T)
 	}
 	cfg.Agent.AutoPlanClassifier = "mimo-flash/mimo-v2.5"
 	t.Setenv("DEEPSEEK_API_KEY", "test-key")
+	t.Setenv("LGDG_API_KEY", "")
 	t.Setenv("MIMO_API_KEY", "")
 
 	missing := providersWithMissingKeys(cfg)
@@ -388,6 +391,7 @@ func TestProvidersWithMissingKeysSkipsDisabledAutoPlanClassifier(t *testing.T) {
 	cfg.Agent.AutoPlan = "off"
 	cfg.Agent.AutoPlanClassifier = "mimo-flash/mimo-v2.5"
 	t.Setenv("DEEPSEEK_API_KEY", "test-key")
+	t.Setenv("LGDG_API_KEY", "")
 	t.Setenv("MIMO_API_KEY", "")
 
 	if missing := providersWithMissingKeys(cfg); len(missing) != 0 {
@@ -469,27 +473,31 @@ func TestSetupOverwritePromptShowsYNDefault(t *testing.T) {
 // TestConfigureKeys verifies that a shared api_key_env (each vendor's SKUs use
 // the same env var) is asked only once, and entered keys become env lines.
 func TestConfigureKeys(t *testing.T) {
-	// Force a clean baseline: any DEEPSEEK_API_KEY / MIMO_API_KEY in the
+	// Force a clean baseline: any DEEPSEEK_API_KEY / LGDG_API_KEY / MIMO_API_KEY in the
 	// process env (e.g. inherited from the test runner) would be picked up
 	// by the new "reuse existing" path and the prompt would be skipped,
 	// making the assertion below noisy.
 	t.Setenv("DEEPSEEK_API_KEY", "")
+	t.Setenv("LGDG_API_KEY", "")
 	t.Setenv("MIMO_API_KEY", "")
 
-	selected := config.Default().Providers // deepseek-flash, deepseek-pro, mimo-pro, mimo-flash
+	selected := config.Default().Providers // deepseek-flash, deepseek-pro, lgdg-modelhub, mimo-pro, mimo-flash
 
-	// Two distinct keys to enter: DEEPSEEK_API_KEY, then MIMO_API_KEY.
-	input := "ds-key\nmi-key\n"
+	// Three distinct keys to enter: DEEPSEEK_API_KEY, LGDG_API_KEY, then MIMO_API_KEY.
+	input := "ds-key\nlgdg-key\nmi-key\n"
 	env := configureKeys(selected, strings.NewReader(input), io.Discard)
 
-	if len(env) != 2 {
-		t.Fatalf("env = %v (want 2: DeepSeek asked once + MiMo asked once)", env)
+	if len(env) != 3 {
+		t.Fatalf("env = %v (want 3: DeepSeek + LGDG + MiMo asked once)", env)
 	}
 	if env[0] != "DEEPSEEK_API_KEY=ds-key" {
 		t.Errorf("env[0] = %q", env[0])
 	}
-	if env[1] != "MIMO_API_KEY=mi-key" {
-		t.Errorf("env[1] = %q", env)
+	if env[1] != "LGDG_API_KEY=lgdg-key" {
+		t.Errorf("env[1] = %q", env[1])
+	}
+	if env[2] != "MIMO_API_KEY=mi-key" {
+		t.Errorf("env[2] = %q", env[2])
 	}
 }
 
@@ -502,20 +510,24 @@ func TestConfigureKeys(t *testing.T) {
 // re-runs of setup.
 func TestConfigureKeysReusesExistingEnv(t *testing.T) {
 	t.Setenv("DEEPSEEK_API_KEY", "preset-ds-key")
+	t.Setenv("LGDG_API_KEY", "") // ask for this one
 	t.Setenv("MIMO_API_KEY", "") // ask for this one
 
 	selected := config.Default().Providers
 	var output bytes.Buffer
-	env := configureKeys(selected, strings.NewReader("\nmi-key-from-input\n"), &output)
+	env := configureKeys(selected, strings.NewReader("\nlgdg-key-from-input\nmi-key-from-input\n"), &output)
 
-	if len(env) != 2 {
-		t.Fatalf("env = %v (want 2: DeepSeek reused + MiMo entered)", env)
+	if len(env) != 3 {
+		t.Fatalf("env = %v (want 3: DeepSeek reused + LGDG/MiMo entered)", env)
 	}
 	if env[0] != "DEEPSEEK_API_KEY=preset-ds-key" {
 		t.Errorf("env[0] = %q, want re-pinned existing value", env[0])
 	}
-	if env[1] != "MIMO_API_KEY=mi-key-from-input" {
-		t.Errorf("env[1] = %q, want typed value", env[1])
+	if env[1] != "LGDG_API_KEY=lgdg-key-from-input" {
+		t.Errorf("env[1] = %q, want typed LGDG value", env[1])
+	}
+	if env[2] != "MIMO_API_KEY=mi-key-from-input" {
+		t.Errorf("env[2] = %q, want typed MiMo value", env[2])
 	}
 	if !strings.Contains(output.String(), "DEEPSEEK_API_KEY") {
 		t.Errorf("expected a 'reusing' confirmation for DEEPSEEK_API_KEY, got:\n%s", output.String())
@@ -524,20 +536,24 @@ func TestConfigureKeysReusesExistingEnv(t *testing.T) {
 
 func TestConfigureKeysCanResetExistingEnv(t *testing.T) {
 	t.Setenv("DEEPSEEK_API_KEY", "stale-ds-key")
+	t.Setenv("LGDG_API_KEY", "") // ask for this one normally
 	t.Setenv("MIMO_API_KEY", "") // ask for this one normally
 
 	selected := config.Default().Providers
 	var output bytes.Buffer
-	env := configureKeys(selected, strings.NewReader("y\nfresh-ds-key\nmi-key\n"), &output)
+	env := configureKeys(selected, strings.NewReader("y\nfresh-ds-key\nlgdg-key\nmi-key\n"), &output)
 
-	if len(env) != 2 {
-		t.Fatalf("env = %v (want 2: DeepSeek reset + MiMo entered)", env)
+	if len(env) != 3 {
+		t.Fatalf("env = %v (want 3: DeepSeek reset + LGDG/MiMo entered)", env)
 	}
 	if env[0] != "DEEPSEEK_API_KEY=fresh-ds-key" {
 		t.Errorf("env[0] = %q, want freshly entered value", env[0])
 	}
-	if env[1] != "MIMO_API_KEY=mi-key" {
-		t.Errorf("env[1] = %q, want typed MiMo value", env[1])
+	if env[1] != "LGDG_API_KEY=lgdg-key" {
+		t.Errorf("env[1] = %q, want typed LGDG value", env[1])
+	}
+	if env[2] != "MIMO_API_KEY=mi-key" {
+		t.Errorf("env[2] = %q, want typed MiMo value", env[2])
 	}
 	if !strings.Contains(output.String(), "[y/N]:") || !strings.Contains(output.String(), "DEEPSEEK_API_KEY") {
 		t.Errorf("expected a reset confirmation for DEEPSEEK_API_KEY, got:\n%s", output.String())
@@ -548,12 +564,13 @@ func TestConfigureKeysCanResetExistingEnv(t *testing.T) {
 // is already populated, pressing Enter at each confirmation keeps the values.
 func TestConfigureKeysAllSetDefaultsToReusingInput(t *testing.T) {
 	t.Setenv("DEEPSEEK_API_KEY", "ds")
+	t.Setenv("LGDG_API_KEY", "lgdg")
 	t.Setenv("MIMO_API_KEY", "mi")
 
 	selected := config.Default().Providers
-	env := configureKeys(selected, strings.NewReader("\n\n"), io.Discard)
-	if len(env) != 2 {
-		t.Errorf("env = %v, want 2 (both reused)", env)
+	env := configureKeys(selected, strings.NewReader("\n\n\n"), io.Discard)
+	if len(env) != 3 {
+		t.Errorf("env = %v, want 3 (all reused)", env)
 	}
 }
 
@@ -595,22 +612,25 @@ func TestAppendEnvUpsertHandlesExportPrefix(t *testing.T) {
 }
 
 // TestGroupByFamily verifies the wizard groups the default preset into
-// "deepseek" (flash + pro) and "mimo" (pro + flash), preserving the order
+// "deepseek" (flash + pro), "lgdg", and "mimo" (pro + flash), preserving the order
 // each family first appears in.
 func TestGroupByFamily(t *testing.T) {
 	order, members, info := groupByFamily(config.Default().Providers)
 
-	if got := order; !reflect.DeepEqual(got, []string{"deepseek", "mimo"}) {
-		t.Fatalf("family order = %v, want [deepseek mimo]", got)
+	if got := order; !reflect.DeepEqual(got, []string{"deepseek", "lgdg", "mimo"}) {
+		t.Fatalf("family order = %v, want [deepseek lgdg mimo]", got)
 	}
 	if got := members["deepseek"]; !reflect.DeepEqual(got, []int{0, 1}) {
 		t.Errorf("deepseek members = %v, want [0 1]", got)
 	}
-	if got := members["mimo"]; !reflect.DeepEqual(got, []int{2, 3}) {
-		t.Errorf("mimo members = %v, want [2 3]", got)
+	if got := members["lgdg"]; !reflect.DeepEqual(got, []int{2}) {
+		t.Errorf("lgdg members = %v, want [2]", got)
 	}
-	if info["deepseek"].name != "DeepSeek" || info["mimo"].name != "MiMo (Xiaomi)" {
-		t.Errorf("display names = %q / %q", info["deepseek"].name, info["mimo"].name)
+	if got := members["mimo"]; !reflect.DeepEqual(got, []int{3, 4}) {
+		t.Errorf("mimo members = %v, want [3 4]", got)
+	}
+	if info["deepseek"].name != "DeepSeek" || info["lgdg"].name != "LGDG ModelHub" || info["mimo"].name != "MiMo (Xiaomi)" {
+		t.Errorf("display names = %q / %q / %q", info["deepseek"].name, info["lgdg"].name, info["mimo"].name)
 	}
 }
 
@@ -945,8 +965,8 @@ func TestWithBuiltinFamiliesAddsMissingMiMo(t *testing.T) {
 	for _, k := range order {
 		seen[info[k].name] = true
 	}
-	if !seen["DeepSeek"] || !seen["MiMo (Xiaomi)"] {
-		t.Fatalf("wizard families = %v, want both DeepSeek and MiMo", order)
+	if !seen["DeepSeek"] || !seen["LGDG ModelHub"] || !seen["MiMo (Xiaomi)"] {
+		t.Fatalf("wizard families = %v, want DeepSeek, LGDG ModelHub, and MiMo", order)
 	}
 	// A user's customized deepseek must not be duplicated.
 	if n := len(groupByFamilyKeys(withBuiltinFamilies(cfg), "deepseek")); n != 2 {
@@ -1009,6 +1029,7 @@ func captureStderr(t *testing.T, fn func()) string {
 
 func TestProvidersWithMissingKeysOnlyReferenced(t *testing.T) {
 	t.Setenv("DEEPSEEK_API_KEY", "")
+	t.Setenv("LGDG_API_KEY", "")
 	t.Setenv("MIMO_API_KEY", "")
 	cfg := config.Default()
 
@@ -1027,6 +1048,7 @@ func TestProvidersWithMissingKeysOnlyReferenced(t *testing.T) {
 
 func TestProvidersWithMissingKeysIncludesPlannerModel(t *testing.T) {
 	t.Setenv("DEEPSEEK_API_KEY", "set")
+	t.Setenv("LGDG_API_KEY", "")
 	t.Setenv("MIMO_API_KEY", "")
 	cfg := config.Default()
 	cfg.Agent.PlannerModel = "mimo-pro"

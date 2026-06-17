@@ -2,7 +2,7 @@
 # This is the project's working config. API keys are loaded from .env via
 # api_key_env and never stored here.
 
-default_model = "deepseek-flash"
+default_model = "lgdg-modelhub"
 
 [ui]
 theme = "auto"
@@ -40,22 +40,15 @@ model       = "deepseek-v4-pro"
 api_key_env = "DEEPSEEK_API_KEY"
 context_window = 1000000
 
-# Custom: ModelHub gateway. OpenAI-compatible.
+# LGDG ModelHub gateway. OpenAI-compatible.
 [[providers]]
-name           = "modelhub"
+name           = "lgdg-modelhub"
 kind           = "openai"
 base_url       = "https://modelhub.lgdg.cc/aigateway/v1"
-models         = ["GLM-5.1-w4a8"]
-default        = "GLM-5.1-w4a8"
-api_key_env    = "MODELHUB_API_KEY"
-context_window = 128000
-# This gateway is not DeepSeek-flavored, so we tell the openai kind to use
-# the standard reasoning_effort wire shape and skip DeepSeek heuristics.
-reasoning_protocol = "openai"
-# Disable extended thinking fields entirely (the gateway is plain
-# chat-completions); safer than letting the auto-detect flip a knob.
-supported_efforts  = []
-default_effort     = ""
+model          = "DeepSeek-V4-Flash-w8a8-mtp"
+api_key_env    = "LGDG_API_KEY"
+context_window = 1000000
+reasoning_protocol = "none"
 
 [tools]
 enabled = []
