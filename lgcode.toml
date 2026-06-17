@@ -1,0 +1,62 @@
+# Reasonix configuration for LGCode.
+# This is the project's working config. API keys are loaded from .env via
+# api_key_env and never stored here.
+
+default_model = "deepseek-flash"
+
+[ui]
+theme = "auto"
+
+[agent]
+max_steps         = 0
+planner_max_steps = 12
+temperature       = 0.0
+auto_plan         = "off"
+
+# DeepSeek — Anthropic-compatible endpoint, two SKUs share one base_url/key.
+[[providers]]
+name           = "deepseek"
+kind           = "anthropic"
+base_url       = "https://api.deepseek.com/anthropic"
+models         = ["deepseek-v4-flash", "deepseek-v4-pro"]
+default        = "deepseek-v4-flash"
+api_key_env    = "DEEPSEEK_API_KEY"
+context_window = 1000000
+
+# Aliases pointing at the same endpoint for quick /model switches.
+[[providers]]
+name        = "deepseek-flash"
+kind        = "anthropic"
+base_url    = "https://api.deepseek.com/anthropic"
+model       = "deepseek-v4-flash"
+api_key_env = "DEEPSEEK_API_KEY"
+context_window = 1000000
+
+[[providers]]
+name        = "deepseek-pro"
+kind        = "anthropic"
+base_url    = "https://api.deepseek.com/anthropic"
+model       = "deepseek-v4-pro"
+api_key_env = "DEEPSEEK_API_KEY"
+context_window = 1000000
+
+# Custom: ModelHub gateway. OpenAI-compatible.
+[[providers]]
+name           = "modelhub"
+kind           = "openai"
+base_url       = "https://modelhub.lgdg.cc/aigateway/v1"
+models         = ["GLM-5.1-w4a8"]
+default        = "GLM-5.1-w4a8"
+api_key_env    = "MODELHUB_API_KEY"
+context_window = 128000
+# This gateway is not DeepSeek-flavored, so we tell the openai kind to use
+# the standard reasoning_effort wire shape and skip DeepSeek heuristics.
+reasoning_protocol = "openai"
+# Disable extended thinking fields entirely (the gateway is plain
+# chat-completions); safer than letting the auto-detect flip a knob.
+supported_efforts  = []
+default_effort     = ""
+
+[tools]
+enabled = []
+bash_timeout_seconds = 120
