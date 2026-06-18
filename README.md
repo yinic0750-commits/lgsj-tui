@@ -1,155 +1,195 @@
-# LGcode
+# LGcode — 中文 AI 编程助手
 
-LGcode 是一个面向开发者的 AI coding agent。它以 Go 实现核心运行时，提供终端 TUI、一次性命令执行、HTTP/SSE 服务、桌面 GUI 和 IM Bot 等多种入口，让模型可以在你的本地项目中读代码、改文件、运行命令、管理任务，并通过权限与沙盒控制风险。
+> 基于配置和插件驱动的多模型 coding agent，支持终端 TUI、HTTP 服务、桌面 GUI 和 IM Bot。
+> **本 fork 已完整汉化**，所有 UI 界面、状态栏、提示信息均为中文。
 
-这个项目的重点不是单纯聊天，而是把模型变成可协作的工程助手：它能理解项目上下文，调用内置工具和 MCP 插件，按计划执行代码任务，保存会话与项目记忆，并在需要写文件或执行命令时请求审批。
+---
 
 ## 核心功能
 
-- **终端 AI 编程助手**：`lgcode chat` 启动交互式 TUI，支持连续对话、流式输出、工具调用轨迹、审批卡片、历史恢复、分支和 rewind。
-- **一次性任务执行**：`lgcode run "..."` 适合脚本化使用，可从参数或 stdin 接收任务，并把结果输出到终端。
-- **本地代码读写与验证**：内置 `read_file`、`write_file`、`edit_file`、`multi_edit`、`move_file`、`grep`、`glob`、`ls`、`bash`、`web_fetch` 等工具，覆盖读代码、搜索、修改、运行测试和抓取网页。
-- **配置驱动的多模型系统**：通过 `lgcode.toml` 配置 DeepSeek、MiMo、Claude 或任意 OpenAI 兼容接口；支持一个 provider 暴露多个模型，也支持运行时 `/model` 切换。
-- **DeepSeek 前缀缓存友好**：系统提示、工具描述和项目记忆保持稳定，适合长会话中复用模型 prefix cache，降低重复上下文成本。
-- **Plan / Ask / Auto / YOLO 模式**：可手动进入只读计划模式，也可在不同审批强度之间切换；YOLO 会跳过普通工具审批，但不会绕过硬性 deny 规则。
-- **权限与沙盒**：写文件、移动文件、执行 shell 等敏感操作会经过权限策略；文件写入可限制在 workspace root 内，macOS 下 bash 可使用 Seatbelt 沙盒。
-- **会话保存、恢复与 rewind**：聊天记录会保存为 session；可继续最近会话、选择历史会话、从 checkpoint 恢复代码或对话，也可以从旧 turn 分支。
-- **项目记忆与自动记忆**：支持 `LGCODE.md` / `AGENTS.md` 作为项目长期指令；`/memory` 和 memory 工具可管理跨会话事实，`#note` 可快速写入记忆。
-- **`@` 引用上下文**：在消息中写 `@path/to/file`、`@dir` 或 `@<mcp-server>:<resource>`，LGcode 会在发送前把文件、目录或 MCP 资源注入上下文。
-- **MCP 插件系统**：可连接 stdio 或 HTTP MCP server，插件工具以 `mcp__server__tool` 形式暴露给模型；MCP prompts 会变成斜杠命令，resources 可通过 `@` 引用。
-- **Skills 工作流**：支持项目级和用户级 skills，内置 explore、research、review、security-review、test 等可复用流程，也可通过 `/skill` 管理自定义技能。
-- **CodeGraph 代码智能**：可启用内置 CodeGraph MCP，让模型使用符号搜索、调用图、上下文探索等结构化代码检索能力。
-- **Hooks 与状态栏扩展**：支持 PreToolUse、PostToolUse、PermissionRequest、UserPromptSubmit、Stop 等 hook，也可配置自定义 status line。
-- **桌面 GUI**：`desktop/` 提供 Wails + React 前端，复用同一套 Go controller，带标签页、项目树、工具卡片、设置面板、模型切换、MCP 面板、Bot 管理和更新提示。
-- **IM Bot 网关**：支持 QQ、飞书、Lark、微信等渠道，把本机 LGcode 暴露为聊天机器人；远端消息仍走同一套模型、工具、权限、审批和沙盒逻辑。
-- **HTTP/SSE 服务模式**：`lgcode serve` 可把 controller 通过 HTTP + Server-Sent Events 暴露给自定义前端或集成系统。
+- **交互式 TUI**：`lgcode chat` 启动中文终端界面，支持连续对话、流式输出、工具调用、审批卡片、历史恢复
+- **一次性任务**：`lgcode run "任务描述"` 适合脚本化使用，从参数或 stdin 接收任务
+- **代码读写与验证**：内置文件操作、搜索、bash 执行、网页抓取等工具
+- **多模型支持**：DeepSeek、MiMo、Claude 或任意 OpenAI 兼容接口，运行时 `/model` 切换
+- **计划/自动/YOLO 模式**：只读计划模式、自动审批、完全自动三种工具执行强度
+- **项目记忆**：`LGCODE.md` / `AGENTS.md` 长期指令，`/memory` 管理跨会话记忆
+- **MCP 插件**：连接外部工具、数据库、内部系统，扩展模型能力
+- **桌面 GUI**：Wails + React 构建，带标签页、项目树、设置面板
+- **IM Bot**：支持 QQ、飞书、Lark、微信等渠道远程触发
 
-## 适合什么场景
+---
 
-- 在终端里让 AI 阅读项目、解释代码、补测试、修 bug、重构小模块。
-- 让模型按计划修改文件，并在每一步执行测试或命令验证。
-- 把常用代码审查、测试、调研流程固化成 skills 或 slash commands。
-- 通过 MCP 接入数据库、内部系统、设计工具或其他工程服务。
-- 在桌面端用更完整的 GUI 管理多项目会话、模型配置、MCP 连接和 IM Bot。
-- 在飞书、Lark、微信等 IM 中远程触发本机代码助手，并保留审批控制。
+## 安装
 
-## 安装与构建
+### 方式一：直接下载二进制（推荐）
 
-如果使用 npm 分发包：
+从 [Releases](https://github.com/yinic0750-commits/lgsj-tui/releases) 下载对应平台的二进制文件，放到 `PATH` 中：
 
-```sh
-npm i -g lgcode
+```bash
+# macOS/Linux
+chmod +x lgcode
+sudo mv lgcode /usr/local/bin/
+
+# 验证
+lgcode version
 ```
 
-从源码构建：
+### 方式二：从源码编译
 
-```sh
+**前置要求**：Go 1.22+
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/yinic0750-commits/lgsj-tui.git
+cd lgsj-tui
+
+# 2. 编译
 make build
-./bin/lgcode --version
+
+# 3. 验证
+./bin/lgcode version
+
+# 4. 安装到系统（可选）
+sudo cp ./bin/lgcode /usr/local/bin/
 ```
 
-交叉编译多个平台：
-
-```sh
+**交叉编译多个平台**：
+```bash
 make cross
 ```
 
-桌面端构建在 `desktop/` 子模块中：
+### 方式三：桌面端构建
 
-```sh
+```bash
 cd desktop
-wails dev
-wails build
+wails dev    # 开发模式
+wails build  # 生产构建
 ```
+
+---
 
 ## 快速开始
 
-1. 生成或编辑配置：
+### 1. 配置 API 密钥
 
-```sh
+```bash
+# DeepSeek
+export DEEPSEEK_API_KEY=sk-...
+
+# 或写入 .env 文件
+echo "DEEPSEEK_API_KEY=sk-..." > .env
+```
+
+### 2. 生成配置文件
+
+```bash
 lgcode setup
 ```
 
-2. 设置模型密钥，例如 DeepSeek：
+按提示选择：
+- 语言：**中文**
+- 模型提供商：DeepSeek / Claude / 自定义
+- 主题：自动/深色/浅色
 
-```sh
-export DEEPSEEK_API_KEY=sk-...
-```
+这会生成 `lgcode.toml` 和 `.env`。
 
-3. 进入项目并启动交互式会话：
+### 3. 启动交互式会话
 
-```sh
-cd /path/to/project
+```bash
+cd /path/to/your-project
 lgcode chat
 ```
 
-4. 在会话里初始化项目记忆：
+### 4. 初始化项目记忆（可选）
 
-```text
+在会话中输入：
+```
 /init
 ```
 
-5. 直接执行一次性任务：
+模型会分析代码库并生成 `AGENTS.md` 作为项目长期指令。
 
-```sh
+### 5. 执行一次性任务
+
+```bash
+# 直接运行
 lgcode run "阅读这个项目并总结主要模块"
-lgcode run "修复 failing tests，并说明改动"
+
+# 从管道输入
 echo "解释这段报错" | lgcode run
+
+# 指定模型
+lgcode run --model mimo-pro "给这个函数补单元测试"
 ```
+
+---
 
 ## 常用命令
 
 | 命令 | 作用 |
-| --- | --- |
-| `lgcode chat` | 启动交互式 TUI，会保存上下文和历史。 |
-| `lgcode run "任务"` | 执行一次性任务，适合脚本或 CI 辅助。 |
-| `lgcode serve` | 启动 HTTP/SSE 服务。 |
-| `lgcode setup` | 交互式生成配置。 |
-| `lgcode config` | 查看或编辑配置。 |
-| `lgcode mcp` | 管理 MCP 连接。 |
-| `lgcode codegraph` | 管理 CodeGraph 集成。 |
-| `lgcode review` | 运行代码审查相关流程。 |
-| `lgcode doctor` | 检查环境、配置和依赖状态。 |
-| `lgcode bot start` | 启动 IM Bot 网关。 |
-| `lgcode upgrade` | 检查或执行升级。 |
+|------|------|
+| `lgcode chat` | 启动交互式 TUI |
+| `lgcode chat --continue` | 继续上次会话 |
+| `lgcode run "任务"` | 执行一次性任务 |
+| `lgcode serve` | 启动 HTTP/SSE 服务 |
+| `lgcode setup` | 交互式配置向导 |
+| `lgcode config auto-plan on` | 开启自动计划模式 |
+| `lgcode config reasoning-language zh` | 设置思考语言为中文 |
+| `lgcode mcp list` | 查看 MCP 连接 |
+| `lgcode doctor` | 环境诊断 |
+| `lgcode upgrade` | 检查更新 |
+| `lgcode version` | 查看版本 |
 
-## TUI 内置能力
+---
 
-在 `lgcode chat` 中可以使用斜杠命令和快捷键管理会话：
+## TUI 快捷键与命令
 
-- `/help`：查看全部内置命令。
-- `/model`：切换模型或 provider。
-- `/mcp`：查看、刷新、禁用或重连 MCP server。
-- `/skills` / `/skill`：查看和管理 skills。
-- `/memory`：查看项目记忆和自动记忆。
-- `/rewind` 或空输入双击 `Esc`：从 checkpoint 恢复代码、对话或创建分支。
-- `/tree`、`/branch`、`/switch`：查看和切换会话分支。
-- `/todo`：查看当前任务列表。
-- `/clear`、`/new`、`/compact`：清空、开启新会话或压缩上下文。
-- `/language`、`/reasoning-language`、`/output-style`：调整显示语言、思考语言和输出风格。
-- `Shift+Tab`：切换 Plan 模式。
-- `Ctrl+Y`：切换 YOLO 模式。
-- `Ctrl+B`：折叠或展开长 shell 输出。
-- `Ctrl+O`：切换详细 reasoning 显示。
+### 状态栏操作
+- `Shift+Tab`：切换**计划模式**
+- `Ctrl+Y`：切换**自动审批模式**（YOLO）
+- `Ctrl+B`：折叠/展开长输出
+- `Ctrl+O`：切换详细思考显示
 
-## 配置示例
+### 斜杠命令
+- `/help`：查看全部命令
+- `/model`：切换模型
+- `/mcp`：管理 MCP 插件
+- `/skills`：管理技能
+- `/memory`：查看项目记忆
+- `/rewind`：从检查点恢复
+- `/clear`、`/new`、`/compact`：清空/新建/压缩会话
+- `/language zh`：切换为中文界面
+- `/quit`：退出会话
 
-`lgcode.toml` 的优先级为：命令行 flag > 当前项目 `./lgcode.toml` > 用户配置 > 内置默认值。密钥通过环境变量读取，不建议写进配置文件。
+---
+
+## 配置说明
+
+`lgcode.toml` 优先级：命令行 flag > 项目 `./lgcode.toml` > 用户配置 > 内置默认值。
 
 ```toml
-default_model = "deepseek"
+# 默认模型
+default_model = "deepseek-flash"
+
+# 界面语言（zh = 中文）
 language = "zh"
 
 [ui]
-theme = "auto"
+theme = "auto"        # auto | dark | light
 theme_style = "graphite"
 
 [agent]
+# 系统提示词（已预置中文要求）
+system_prompt = """
+你是 LGcode，一个专注于执行代码任务的编程助手。
+所有用户可见的 UI 文本、状态标签、提示信息必须使用中文。
+"""
 max_steps = 0
 planner_max_steps = 12
 auto_plan = "off"
-reasoning_language = "auto"
+reasoning_language = "zh"
 
+# DeepSeek 提供商
 [[providers]]
 name = "deepseek"
 kind = "openai"
@@ -158,8 +198,8 @@ models = ["deepseek-v4-flash", "deepseek-v4-pro"]
 default = "deepseek-v4-flash"
 api_key_env = "DEEPSEEK_API_KEY"
 context_window = 1000000
-effort = "high"
 
+# Claude 提供商
 [[providers]]
 name = "claude"
 kind = "anthropic"
@@ -168,73 +208,58 @@ api_key_env = "ANTHROPIC_API_KEY"
 context_window = 1000000
 
 [tools]
-enabled = []
 bash_timeout_seconds = 120
 
+# MCP 插件示例
 [[plugins]]
 name = "example"
 command = "lgcode-plugin-example"
 ```
 
-更完整的配置样例见 [`lgcode.example.toml`](./lgcode.example.toml)。
+完整配置示例见 [`lgcode.example.toml`](./lgcode.example.toml)。
 
-## 权限、安全与审批
+---
 
-LGcode 的工具调用会经过权限层：
+## 权限与安全
 
-- `deny` 规则优先级最高，任何模式都不能绕过。
-- Ask 模式会在写文件、执行命令等操作前询问。
-- Auto 模式会自动放行兜底审批，但显式 ask / deny 仍生效。
-- YOLO 模式会跳过普通工具审批，适合受信任的临时任务。
-- 文件写工具可限制在 workspace root 内，防止越界修改。
-- macOS 下 bash 可以进入 Seatbelt 沙盒，限制写入范围和网络访问。
+- **询问模式**：写文件、执行命令前会询问确认
+- **自动模式**：自动放行普通操作，显式拒绝仍生效
+- **YOLO 模式**：跳过普通审批，适合受信任的临时任务
+- **文件写入限制**：可限制在 workspace root 内
+- **macOS 沙盒**：bash 命令可使用 Seatbelt 沙盒限制范围
 
-这意味着你可以让模型高效执行任务，同时把高风险命令、敏感目录和持久授权控制在配置中。
-
-## 插件、Skills 与 CodeGraph
-
-LGcode 的扩展能力主要有三层：
-
-- **MCP 插件**：接入外部工具、服务、数据库或内部系统；stdio 和 HTTP 传输都支持。
-- **Skills**：把固定工作流写成可复用 playbook，例如 review、test、security-review。
-- **CodeGraph**：通过符号、调用关系和上下文检索帮助模型理解大型代码库。
-
-这些能力既能在 TUI 中使用，也能被桌面端和 Bot 复用。
-
-## 桌面端与 Bot
-
-桌面端位于 [`desktop/`](./desktop)，使用 Wails + React 构建，但底层仍然调用同一个 `internal/control.Controller`。因此 CLI、HTTP 服务、桌面端和 Bot 拥有一致的模型、工具、权限、沙盒、记忆和事件流。
-
-Bot 能把 LGcode 接到 QQ、飞书、Lark、微信等 IM 渠道。远端用户发来的消息会进入本机 LGcode runtime；如果模型需要写文件或运行命令，审批请求也会回到 IM 中。
+---
 
 ## 项目结构
 
 ```text
-cmd/lgcode/                 CLI 入口
-internal/cli/               TUI、子命令、渲染和交互
-internal/control/           传输无关的 controller 核心
-internal/agent/             agent 会话、压缩、任务循环和保存
-internal/provider/          OpenAI / Anthropic 等模型 provider
-internal/tool/builtin/      内置文件、搜索、bash、web_fetch 等工具
-internal/plugin/            MCP 插件运行时
-internal/skill/             Skills 索引与调用
-internal/memory/            项目记忆与自动记忆
-internal/codegraph/         CodeGraph 集成
-internal/bot/               QQ / 飞书 / Lark / 微信 Bot 网关
-internal/serve/             HTTP/SSE 服务
-desktop/                    Wails 桌面端
-docs/                       使用指南、规格、Bot 和 checkpoint 文档
+cmd/lgcode/              CLI 入口
+internal/cli/            TUI、子命令、渲染
+internal/control/        传输无关的 controller 核心
+internal/agent/          agent 会话、压缩、任务循环
+internal/provider/       模型 provider（OpenAI/Anthropic）
+internal/tool/builtin/   内置工具（文件、搜索、bash）
+internal/plugin/         MCP 插件运行时
+internal/skill/          Skills 索引与调用
+internal/memory/         项目记忆
+internal/i18n/           国际化（中文/英文/繁体中文）
+internal/serve/          HTTP/SSE 服务
+desktop/                 Wails 桌面端
+docs/                    使用指南与规格文档
 ```
 
-## 文档入口
+---
+
+## 文档
 
 - [中文使用指南](./docs/GUIDE.zh-CN.md)
 - [Bot 使用指南](./docs/BOT_GUIDE.zh-CN.md)
 - [Checkpoints 与 rewind](./docs/CHECKPOINTS.md)
 - [工程规格](./docs/SPEC.md)
-- [迁移指南](./docs/MIGRATING.md)
 - [桌面端说明](./desktop/README.md)
+
+---
 
 ## 许可证
 
-本项目使用 MIT License，见 [LICENSE](./LICENSE)。
+MIT License，见 [LICENSE](./LICENSE)。
