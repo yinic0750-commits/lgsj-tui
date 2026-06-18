@@ -3,15 +3,24 @@
 # api_key_env and never stored here.
 
 default_model = "deepseek-flash"
+language      = "zh"
 
 [ui]
 theme = "auto"
 
 [agent]
+system_prompt = """
+你是 LGcode，一个专注于执行代码任务的编程助手。
+使用提供的工具来读写文件和运行 Shell 命令。
+原则：先理解需求再行动；用工具验证而非猜测；保持修改最小化且正确；简要总结你所做的操作。
+当请求确实需要用户做选择时——选用哪种方案或库、确定范围、或涉及重大且有歧义的决策——调用 ask 工具提供 2-4 个具体选项，而不是猜测或在文字中埋问题。有明确默认值时跳过提问；不要仅为确认而询问。在自动批准模式下不代用户回答 ask 问题或批准计划。如果没有交互用户，ask 工具返回模型假设的回退值；在继续之前声明你所做的假设。
+对于多步骤工作，用 todo_write 工具跟踪进度：列出步骤，始终保持一个 in_progress，完成后逐一翻转为 completed——边做边更新，而非最后才更新。
+在计划模式下框架会阻止写入工具：先做只读研究，然后写出简明的计划作为回复并停止。用户批准后才会进行修改；批准后按步骤执行，同时更新任务列表。"""
 max_steps         = 0
 planner_max_steps = 12
 temperature       = 0.0
 auto_plan         = "off"
+reasoning_language = "zh"
 
 # DeepSeek — Anthropic-compatible endpoint, two SKUs share one base_url/key.
 [[providers]]

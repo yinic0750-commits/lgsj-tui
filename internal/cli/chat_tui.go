@@ -3829,7 +3829,7 @@ func renderTUIBanner(label, missing string, width int) string {
 	}
 
 	title := bold("LGcode") + "  " + dim("dev")
-	sub := dim("deepseek-v4-flash with high effort") + " · " + dim("API Usage Billing")
+	sub := dim("deepseek-v4-flash 高强度推理") + " · " + dim("API 按量计费")
 	pathLine := dim(shortCwd)
 
 	headerLines := []string{title, sub, "", pathLine}
