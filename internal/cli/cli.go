@@ -1152,6 +1152,8 @@ func familyOf(name string) providerFamily {
 	switch {
 	case strings.HasPrefix(name, "deepseek"):
 		return providerFamily{key: "deepseek", name: "DeepSeek", desc: "fast & cheap, plus a stronger Pro SKU"}
+	case strings.HasPrefix(name, "lgdg"):
+		return providerFamily{key: "lgdg", name: "LGDG ModelHub", desc: "龙岗数据 ModelHub OpenAI-compatible gateway"}
 	case strings.HasPrefix(name, "mimo"):
 		return providerFamily{key: "mimo", name: "MiMo (Xiaomi)", desc: "long-horizon agentic"}
 	default:
@@ -1387,9 +1389,9 @@ func groupByFamily(providers []config.ProviderEntry) ([]string, map[string][]int
 }
 
 // withBuiltinFamilies guarantees the wizard always offers the built-in provider
-// families (DeepSeek, MiMo) even when the loaded config replaced them — a
-// lgcode.toml that defines only [[providers]] for deepseek otherwise hides
-// MiMo from setup, since [[providers]] replaces the presets wholesale. Families
+// families (DeepSeek, LGDG ModelHub, MiMo) even when the loaded config replaced
+// them — a lgcode.toml that defines only [[providers]] for deepseek otherwise hides
+// the other presets from setup, since [[providers]] replaces the presets wholesale. Families
 // already present are left untouched (the user's customizations win); only the
 // missing built-in families get their default entries appended.
 func withBuiltinFamilies(providers []config.ProviderEntry) []config.ProviderEntry {

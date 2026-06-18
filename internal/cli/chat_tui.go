@@ -1076,12 +1076,12 @@ func (m chatTUI) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.queueEditCursor >= 0 && m.queueEditCursor < len(m.pendingInterject) {
 					// Save the edited text back to the queue slot.
 					m.pendingInterject[m.queueEditCursor] = line
-					m.notice(fmt.Sprintf("queue [%d] updated", m.queueEditCursor+1))
+					m.notice(fmt.Sprintf("队列 [%d] 已更新", m.queueEditCursor+1))
 					m.queueEditCursor = -1
 					m.queueEditDraft = ""
 				} else {
 					m.pendingInterject = append(m.pendingInterject, line)
-					m.notice("feedback queued — will send when the current turn finishes")
+					m.notice("反馈已排队 — 将在当前轮次完成后发送")
 					m.queueEditCursor = -1
 					m.queueEditDraft = ""
 				}
@@ -1111,7 +1111,7 @@ func (m chatTUI) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if note == "" {
 					m.notice(i18n.M.QuickRememberEmpty)
 				} else if path, err := m.ctrl.QuickAdd(memory.ScopeProject, note); err != nil {
-					m.notice("memory: " + err.Error())
+					m.notice("记忆: " + err.Error())
 				} else {
 					m.notice(fmt.Sprintf(i18n.M.QuickRememberDoneFmt, path))
 				}
@@ -1245,7 +1245,7 @@ func (m chatTUI) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.modelSwitchPending = false
 		m.pendingModelSwitch = nil
 		if msg.err != nil {
-			m.notice("model: " + msg.err.Error())
+			m.notice("模型: " + msg.err.Error())
 			// Build failed — no old controller to retire.
 		} else {
 			m.ctrl = msg.ctrl
@@ -1303,7 +1303,7 @@ func (m chatTUI) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case clipboardImageMsg:
 		if msg.err != nil {
-			m.notice("paste image: " + msg.err.Error())
+			m.notice("图片粘贴: " + msg.err.Error())
 			break
 		}
 		m.insertImageRef(msg.path)
@@ -1311,7 +1311,7 @@ func (m chatTUI) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case clipboardPasteMsg:
 		switch {
 		case msg.err != nil:
-			m.notice("paste: " + msg.err.Error())
+			m.notice("粘贴: " + msg.err.Error())
 		case msg.path != "":
 			m.insertImageRef(msg.path)
 		case msg.text != "":
@@ -2175,7 +2175,7 @@ func (m chatTUI) View() tea.View {
 			Foreground(lipgloss.Color("#ffffff")).
 			Bold(true).
 			Padding(0, 1).
-			Render("Shell")
+			Render("壳模式")
 	} else {
 		color := statusAutoColor
 		foreground := "#111827"
@@ -2199,9 +2199,9 @@ func (m chatTUI) View() tea.View {
 	var status string
 	switch {
 	case m.rewind != nil:
-		status = "  " + modeTag + " · ⟲ rewind"
+		status = "  " + modeTag + " · ⟲ 回溯"
 	case m.mcpImport != nil:
-		status = "  " + modeTag + " · MCP import"
+		status = "  " + modeTag + " · MCP 导入"
 	case m.resumePick != nil:
 		status = "  " + modeTag + " · " + i18n.M.StatusResumePicker
 	case m.mcp != nil:
@@ -2241,9 +2241,9 @@ func (m chatTUI) View() tea.View {
 			}
 			if n := len(m.pendingInterject); n > 0 {
 				if n == 1 {
-					working += dim(" · ✎ feedback queued")
+					working += dim(" · ✎ 反馈已排队")
 				} else {
-					working += dim(fmt.Sprintf(" · ✎ %d queued", n))
+					working += dim(fmt.Sprintf(" · ✎ %d 条已排队", n))
 				}
 			}
 		}
@@ -2493,7 +2493,11 @@ func (m chatTUI) effortTag() string {
 	if m.effortLevel == "" {
 		return ""
 	}
-	body := "effort " + m.effortLevel
+	level := m.effortLevel
+	if level == "auto" {
+		level = "自动"
+	}
+	body := "强度 " + level
 	if m.effortLevel != "auto" {
 		return lipgloss.NewStyle().Foreground(lipgloss.Color("#2563eb")).Bold(true).Render(body)
 	}
@@ -3104,42 +3108,42 @@ func (m chatTUI) modeTagText() string {
 	if m.desktopShortcutLayout() {
 		switch {
 		case m.planMode && toolApprovalMode == control.ToolApprovalYolo:
-			return "Plan+YOLO"
+			return "计划+自动"
 		case goalMode && toolApprovalMode == control.ToolApprovalYolo:
-			return "Goal+YOLO"
+			return "目标+自动"
 		case toolApprovalMode == control.ToolApprovalYolo:
-			return "YOLO"
+			return "自动"
 		case m.planMode:
-			return "Plan"
+			return "计划"
 		case goalMode && toolApprovalMode == control.ToolApprovalAuto:
-			return "Goal+Auto"
+			return "目标+自动"
 		case goalMode:
-			return "Goal"
+			return "目标"
 		case toolApprovalMode == control.ToolApprovalAuto:
-			return "Auto"
+			return "自动"
 		default:
-			return "Ask"
+			return "询问"
 		}
 	}
 	switch {
 	case m.planMode && toolApprovalMode == control.ToolApprovalYolo:
-		return "Plan+YOLO"
+		return "计划+自动"
 	case m.planMode && toolApprovalMode == control.ToolApprovalAuto:
-		return "Plan+Approve"
+		return "计划+审批"
 	case goalMode && toolApprovalMode == control.ToolApprovalYolo:
-		return "Goal+YOLO"
+		return "目标+自动"
 	case goalMode && toolApprovalMode == control.ToolApprovalAuto:
-		return "Goal+Approve"
+		return "目标+审批"
 	case toolApprovalMode == control.ToolApprovalYolo:
-		return "YOLO"
+		return "自动"
 	case toolApprovalMode == control.ToolApprovalAuto:
-		return "Auto+Approve"
+		return "自动+审批"
 	case m.planMode:
-		return "Plan"
+		return "计划"
 	case goalMode:
-		return "Goal"
+		return "目标"
 	default:
-		return "Auto"
+		return "自动"
 	}
 }
 
@@ -3153,9 +3157,9 @@ func (m *chatTUI) toggleVerboseReasoning(notify bool) {
 		return
 	}
 	if m.showReasoning {
-		m.notice("verbose on — thinking text will be shown")
+		m.notice("verbose 开启 — 思考文本将显示")
 	} else {
-		m.notice("verbose off — thinking text will stay collapsed")
+		m.notice("verbose 关闭 — 思考文本将保持折叠")
 	}
 }
 
@@ -3553,11 +3557,11 @@ func (m *chatTUI) runSlashCommand(input string) tea.Cmd {
 	case "/remember":
 		note := strings.TrimSpace(strings.TrimPrefix(input, cmd))
 		if note == "" {
-			m.notice("nothing to remember")
+			m.notice("没有可记住的内容")
 		} else if path, err := m.ctrl.QuickAdd(memory.ScopeProject, note); err != nil {
-			m.notice("memory: " + err.Error())
+			m.notice("记忆: " + err.Error())
 		} else {
-			m.notice("remembered → " + path)
+			m.notice("已记住 → " + path)
 		}
 	case "/quit", "/exit":
 		return tea.Quit
@@ -3631,7 +3635,7 @@ func (m *chatTUI) commandNames() string {
 // the user can inspect sandbox state without leaving the TUI (closes #3316).
 func (m *chatTUI) showSandboxStatus() {
 	if m.cfg == nil {
-		m.notice("sandbox: config not loaded")
+		m.notice("沙箱: 配置未加载")
 		return
 	}
 	bash := m.cfg.BashMode()
@@ -3678,13 +3682,13 @@ func (m *chatTUI) runMCPSubcommand(input string) {
 		m.showMCPStatus()
 	case "show":
 		if len(args) < 3 {
-			m.notice("usage: /mcp show <name>")
+			m.notice("用法: /mcp show <名称>")
 			return
 		}
 		m.openMCPManager(args[2])
 	case "tools":
 		if len(args) < 3 {
-			m.notice("usage: /mcp tools <name>")
+			m.notice("用法: /mcp tools <名称>")
 			return
 		}
 		m.openMCPManager(args[2])
@@ -3699,42 +3703,42 @@ func (m *chatTUI) runMCPSubcommand(input string) {
 		}
 		n, err := m.ctrl.AddMCPServer(entry)
 		if err != nil {
-			m.notice("mcp add: " + err.Error())
+			m.notice("MCP 添加: " + err.Error())
 			return
 		}
-		m.notice(fmt.Sprintf("connected %s — %d tools, saved to config (available next message)", entry.Name, n))
+		m.notice(fmt.Sprintf("已连接 %s — %d 个工具，已保存到配置（下条消息可用）", entry.Name, n))
 	case "connect":
 		if len(args) < 3 {
-			m.notice("usage: /mcp connect <name>")
+			m.notice("用法: /mcp connect <名称>")
 			return
 		}
 		n, err := m.ctrl.ConnectConfiguredMCPServer(args[2])
 		if err != nil {
-			m.notice("mcp connect: " + err.Error())
+			m.notice("MCP 连接: " + err.Error())
 			return
 		}
 		m.host = m.ctrl.Host()
-		m.notice(fmt.Sprintf("connected %s — %d tools (available next message)", args[2], n))
+		m.notice(fmt.Sprintf("已连接 %s — %d 个工具（下条消息可用）", args[2], n))
 	case "remove", "rm":
 		if len(args) < 3 {
-			m.notice("usage: /mcp remove <name>")
+			m.notice("用法: /mcp remove <名称>")
 			return
 		}
 		name := args[2]
 		disconnected, err := m.ctrl.RemoveMCPServer(name)
 		if err != nil {
-			m.notice("mcp remove: " + err.Error())
+			m.notice("MCP 移除: " + err.Error())
 			return
 		}
 		if disconnected {
-			m.notice("disconnected " + name + " and removed it from config")
+			m.notice("已断开 " + name + " 并从配置中移除")
 		} else {
-			m.notice("removed " + name + " from config")
+			m.notice("已从配置中移除 " + name)
 		}
 	case "import":
 		m.openMCPImportPicker()
 	default:
-		m.notice("unknown /mcp subcommand " + args[1] + " — try: /mcp, /mcp list, /mcp show, /mcp add, /mcp connect, /mcp import, /mcp remove")
+		m.notice("未知 /mcp 子命令 " + args[1] + " — 试试: /mcp, /mcp list, /mcp show, /mcp add, /mcp connect, /mcp import, /mcp remove")
 	}
 }
 
